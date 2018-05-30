@@ -1,6 +1,6 @@
 let _game;
 var gameLoopHandle;
-let possibleShapes = ["square","line","leftS","rightS","podium","lShapeR","lShapeL"];
+let possibleShapes = ["square","line","leftS","rightS","podium","lShapeR","lShapeL","zShapeL","zShapeR","fourSquares"];
 function Point(x, y) {
   this.x = x;
   this.y = y;
@@ -62,6 +62,29 @@ let Shape = function(shapeStr){
       this.pivotPointIndex = 3;
       this.canRotate = true;
       this.color = "gray";
+      break;
+    case "zShapeR":
+      this.body = [
+        new Point(0,0),
+        new Point(1,0),
+        new Point(1,1),
+        new Point(1,2),
+        new Point(2,2)
+      ];
+      this.pivotPointIndex = 2;
+      this.canRotate = true;
+      this.color = "#73C6B6";
+      break;
+    case "fourSquares":
+      this.body = [
+        new Point(0,0),
+        new Point(2,0),
+        new Point(2,2),
+        new Point(0,2),
+      ];
+      this.pivotPointIndex = 2;
+      this.canRotate = false;
+      this.color = "#E67E22";
       break;
     case "line":
       this.body = [
