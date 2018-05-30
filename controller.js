@@ -79,12 +79,18 @@ shapeRotationMap["rightS3"] = shapeRotationMap["rightS1"];
         {x:1, y:0},
         {x:1, y:1},
       ];
-})
+});
+
+function getShapeRotationMapInstance(which){
+  return JSON.parse(JSON.stringify(shapeRotationMap[which]));
+}
+
 let TetrisBlock = function(shapeStr){
   this.rotation = 0; // 0, 1, 2, 3;
   this.stepsDown = 0;
+  this.stepsRight = 0;
   this.shape = shapeStr;
-  this.body = shapeRotationMap[shapeStr+this.rotation];
+  this.body = getShapeRotationMapInstance(shapeStr+this.rotation);
   switch(shapeStr){
     case "line":
       this.color = "green";
@@ -110,7 +116,7 @@ let TetrisBlock = function(shapeStr){
       if (!lowestSquare) {
         lowestSquare = thisSquare;
       } else {
-        if (thisSquare.y > lowestSquare.y){
+        if (thisSquare.x > lowestSquare.x){
           lowestSquare = thisSquare;
         }
       }
@@ -120,16 +126,24 @@ let TetrisBlock = function(shapeStr){
     return lowestSquare;
   }
 
+  
+
+  
+
+
   this.rotate = function(){
     this.rotation = this.rotation == 3 ? 0 : this.rotation + 1;
-    this.body = shapeRotationMap[shapeStr+this.rotation];
+    this.body = getShapeRotationMapInstance(shapeStr+this.rotation);
+    for (let i = 0; i< this.body.length;i++){
+      this.body[i].x += this.stepsDown;
+      this.body[i].y += this.stepsRight;
+    }
   }
   
   this.moveDown = function(){
     
     for (let i=0; i<this.body.length;i++){
-      let thisSquare = this.body[i];
-      thisSquare.x++;
+      this.body[i].x++;
     }
     this.stepsDown++;
   }
@@ -137,19 +151,52 @@ let TetrisBlock = function(shapeStr){
   this.moveLeft = function(){
     
     for (let i=0; i<this.body.length;i++){
-      let thisSquare = this.body[i];
-      thisSquare.y--;
+      this.body[i].y--;
     }
+    this.stepsRight--;
   }
   
   this.moveRight = function(){
     
     for (let i=0; i<this.body.length;i++){
-      let thisSquare = this.body[i];
-      thisSquare.y++;
+      this.body[i].y++;
     }
+    this.stepsRight++;
   }
   
+}
+let getLeftMostSquare = function(body){
+  let leftMostsquare;
+  for (let i=0; i<body.length;i++){
+    let thisSquare = body[i];
+    if (!leftMostsquare) {
+      leftMostsquare = thisSquare;
+    } else {
+      if (leftMostsquare.y > thisSquare.y){
+        leftMostsquare = thisSquare;
+      }
+    }
+    
+  }
+  
+  return leftMostsquare;
+}
+
+let getRightMostSquare = function(body){
+  let rightMostSquare;
+  for (let i=0; i<body.length;i++){
+    let thisSquare = body[i];
+    if (!rightMostSquare) {
+      rightMostSquare = thisSquare;
+    } else {
+      if (rightMostSquare.y < thisSquare.y){
+        rightMostSquare = thisSquare;
+      }
+    }
+    
+  }
+  console.log(rightMostSquare);
+  return rightMostSquare;
 }
 
 let TetrisGame = function(){
@@ -210,21 +257,21 @@ TetrisGame.prototype.setScore = function(score){
   this.score = score;
 }
 function outOfBoundsDown(game,tetrisBody){
-  game.generateBoard();
-  let gameBoard = game.board;
-  for (let i = 0; i<tetrisBody.length;i++){
-    let tetrisBlock = tetrisBody[i];
-    if (tetrisBlock.x > game.boardSizeX) return true;
-  };
-  return false;
+  console.log("Checking out of bounds DOWN. BoardSizeX: " + game.boardSizeX);
+  console.log("Lowest square: " + JSON.stringify(game.fallingBlock.getLowestSquare()));
+  console.log("Its x " + game.fallingBlock.getLowestSquare().x);
+  console.log("Will return " +  (game.fallingBlock.getLowestSquare().x > game.boardSizeX));
+  return game.fallingBlock.getLowestSquare().x > game.boardSizeX;
+
 }
 function haveCollision(game,tetrisBody){
   game.generateBoard();
   let gameBoard = game.board;
+  if (getLeftMostSquare(tetrisBody).y < 0) return true;
+  if (getRightMostSquare(tetrisBody).y == game.boardSizeY) return true;
   for (let i = 0; i<tetrisBody.length;i++){
     let tetrisBlock = tetrisBody[i];
     if (tetrisBlock.x <0) return true;
-    if (tetrisBlock.y <0 || tetrisBlock.y > game.boardSizeY) return true;
     for(let j = 0; j<gameBoard.length;j++){
       for(let k = 0; k<gameBoard[i].length;k++){
         let gameBlock = gameBoard[i][j];
@@ -243,7 +290,9 @@ TetrisGame.prototype.rotateIfCan = function(){
   let rawBlockRotated = rawBlock;
   for (let i = 0; i< rawBlockRotated.body.length;i++){
     rawBlockRotated.body[i].x += this.fallingBlock.stepsDown;
+    rawBlockRotated.body[i].y += this.fallingBlock.stepsRight;
   }
+  rawBlockRotated.rotation = this.fallingBlock.rotation;
   if (!haveCollision(this,rawBlockRotated.body)) this.fallingBlock.rotate();
 
 }
@@ -252,7 +301,9 @@ TetrisGame.prototype.moveLeftIfCan = function(){
   let rawBlock = new TetrisBlock(this.fallingBlock.shape);
   for (let i = 0; i< rawBlock.body.length;i++){
     rawBlock.body[i].x += this.fallingBlock.stepsDown;
+    rawBlock.body[i].y += this.fallingBlock.stepsRight;
   }
+  rawBlock.rotation = this.fallingBlock.rotation;
   rawBlock.moveLeft();
 
   if (!haveCollision(this,rawBlock.body)) this.fallingBlock.moveLeft();
@@ -263,38 +314,43 @@ TetrisGame.prototype.generateNewBlockOrGameOver = function(){
 
   if (haveCollision(this,this.fallingBlock))
     this.ended = true;
-
+ 
 }
 
 TetrisGame.prototype.moveDownOrNewBlock = function(){
-  console.log(this.fallingBlock.shape);
-  console.log(this.fallingBlock.rotation);
+  
   let rawBlock = new TetrisBlock(this.fallingBlock.shape);
   for (let i = 0; i< rawBlock.body.length;i++){
     rawBlock.body[i].x += this.fallingBlock.stepsDown;
+    rawBlock.body[i].y += this.fallingBlock.stepsRight;
 
   }
+  rawBlock.rotation = this.fallingBlock.rotation;
   rawBlock.moveDown();
 
-  if (!haveCollision(this,rawBlock.body)) this.fallingBlock.moveDown()
-  else if (outOfBoundsDown(this,rawBlock.body)) {
+  if (outOfBoundsDown(this,rawBlock.body)) {
     rawBlock = new TetrisBlock(this.fallingBlock.shape);
     for (let i = 0; i< rawBlock.body.length;i++){
       rawBlock.body[i].x += this.fallingBlock.stepsDown;
-
+      rawBlock.body[i].y += this.fallingBlock.stepsRight;
     }
     this.blocksFallen.push(rawBlock);
-    this.generateNewBlockOrGameOver();
+    return this.generateNewBlockOrGameOver();
     
   }
+
+  if (!haveCollision(this,rawBlock.body)) return this.fallingBlock.moveDown();
+  
+  
 }
 
 TetrisGame.prototype.moveRightIfCan = function(){
   let rawBlock = new TetrisBlock(this.fallingBlock.shape);
   for (let i = 0; i< rawBlock.body.length;i++){
     rawBlock.body[i].x += this.fallingBlock.stepsDown;
-    rawBlock.body[i].y += this.fallingBlock.stepsDown;
+    rawBlock.body[i].y += this.fallingBlock.stepsRight;
   }
+  rawBlock.rotation = this.fallingBlock.rotation;
   rawBlock.moveRight();
 
   if (!haveCollision(this,rawBlock.body)) this.fallingBlock.moveRight();
